@@ -5,3 +5,11 @@
 ## url for the deployed service:- 
 
 https://identity-reconciliation-hjf4.onrender.com
+
+## Sample Curt :-
+
+```
+curl --location 'https://identity-reconciliation-hjf4.onrender.com/identity' \
+--header 'Content-Type: application/json' \
+--data-raw '{"phoneNumber":"+919873535330","email":"test@gmail.com"}'
+```
