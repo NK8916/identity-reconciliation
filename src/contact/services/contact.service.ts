@@ -1,9 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { concat } from 'rxjs';
-import { In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { ContactEntity } from '../models/contact.entity';
-import { Contact } from '../models/contact.interface';
+import { Contact } from '../models/contact.dto';
 
 @Injectable()
 export class ContactService {
@@ -14,6 +13,13 @@ export class ContactService {
 
   async createContact(contact: Contact): Promise<object> {
     let result = [];
+    console.log('contact=>', contact);
+    if (!contact.email && !contact.phoneNumber) {
+      throw new HttpException(
+        'PhoneNumber amd Email both cannot be empty',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
     let existingContacts = [];
     if (contact.email && contact.phoneNumber) {
       const where = { email: contact.email, phoneNumber: contact.phoneNumber };
@@ -23,22 +29,20 @@ export class ContactService {
 
     if (existingContacts.length) {
       const existingContact = existingContacts[0];
-      //   console.log('existingContacts', existingContacts);
-      //   contact['linkedId'] = existingContact.id;
-      //   contact['linkPrecedence'] = 'secondary';
-      //   await this.contactRepository.save(contact);
       const linkedId = existingContact?.linkedId || existingContact?.id;
       console.log('linkedId', linkedId);
       const linkedContacts = await this.getLinkedContacts(linkedId);
       console.log('linkedContacts', linkedContacts);
       result = this.formatContactResponse(existingContacts, linkedContacts);
     } else {
-      const where = [
-        { email: contact.email },
-        { phoneNumber: contact.phoneNumber },
-      ];
+      const where = [];
+      if (contact.email) {
+        where.push({ email: contact.email });
+      }
+      if (contact.phoneNumber) {
+        where.push({ phoneNumber: contact.phoneNumber });
+      }
       existingContacts = await this.getContact(where);
-      console.log('existingContacts', existingContacts);
       console.log('else');
       if (existingContacts.length) {
         const primaryContacts = existingContacts.filter(
@@ -51,8 +55,10 @@ export class ContactService {
           (item) => item.email == contact.email,
         );
         let linkedId = null;
+        let toSave = false;
         console.log('primaryContacts', primaryContacts);
         const protentialSecondaryContacts = primaryContacts.slice(1);
+        console.log('protentialSecondaryContacts', protentialSecondaryContacts);
         if (
           protentialSecondaryContacts.length &&
           phoneDataExist &&
@@ -65,25 +71,28 @@ export class ContactService {
         } else if (!phoneDataExist && !emailDataExist) {
           contact['linkPrecedence'] = 'primary';
           const savedContact = await this.contactRepository.save(contact);
-          console.log('savedContact', savedContact);
           linkedId = savedContact?.linkedId || savedContact?.id;
         } else if (!phoneDataExist) {
-          const primaryContact = primaryContacts[0];
-          linkedId = primaryContact?.linkedId || primaryContact?.id;
-          contact['linkPrecedence'] = 'secondary';
-          contact['linkedId'] = linkedId;
-          await this.contactRepository.save(contact);
+          toSave = true;
         } else if (!emailDataExist) {
-          const primaryContact = primaryContacts[0];
-          linkedId = primaryContact?.linkedId || primaryContact?.id;
-          contact['linkPrecedence'] = 'secondary';
-          contact['linkedId'] = linkedId;
-          await this.contactRepository.save(contact);
+          toSave = true;
+        }
+        if (!linkedId) {
+          const existingContact = existingContacts[0];
+          linkedId = existingContact?.linkedId || existingContact?.id;
+          if (toSave) {
+            contact['linkPrecedence'] = 'secondary';
+            contact['linkedId'] = linkedId;
+            await this.contactRepository.save(contact);
+          }
+        }
+        let linkedContacts = [];
+        if (linkedId) {
+          console.log('linkedId=>>', linkedId);
+          linkedContacts = await this.getLinkedContacts(linkedId);
         }
 
-        console.log('linkedId', linkedId);
-        const linkedContacts = await this.getLinkedContacts(linkedId);
-        result = this.formatContactResponse(primaryContacts, linkedContacts);
+        result = this.formatContactResponse(existingContacts, linkedContacts);
         console.log('linkedContacts', linkedContacts);
       }
     }
