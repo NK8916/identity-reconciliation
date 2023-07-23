@@ -6,7 +6,7 @@
 
 https://identity-reconciliation-hjf4.onrender.com
 
-## Sample Curt :-
+## Sample Curl :-
 
 ```
 curl --location 'https://identity-reconciliation-hjf4.onrender.com/identity' \
