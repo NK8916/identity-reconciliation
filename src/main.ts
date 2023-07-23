@@ -13,7 +13,7 @@ async function bootstrap() {
     .addTag('Contact')
     .build();
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+  SwaggerModule.setup('', app, document);
   await app.listen(3000);
 }
 bootstrap();
