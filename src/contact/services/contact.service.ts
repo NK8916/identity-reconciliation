@@ -94,6 +94,12 @@ export class ContactService {
 
         result = this.formatContactResponse(existingContacts, linkedContacts);
         console.log('linkedContacts', linkedContacts);
+      } else {
+        console.log('else_contact=>', contact);
+        contact['linkPrecedence'] = 'primary';
+        const savedContact = await this.contactRepository.save(contact);
+        console.log('savedContact=>', savedContact);
+        result = this.formatContactResponse([savedContact], []);
       }
     }
     return result;
